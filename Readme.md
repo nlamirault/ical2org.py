@@ -14,7 +14,7 @@ recurring events falling into a specified time-frame into the exported
 org-document.
 
 Installation
-===========
+============
 
 ical2org.py is a python script and it needs the following libraries:
 
@@ -24,14 +24,14 @@ ical2org.py is a python script and it needs the following libraries:
 You can install those packages as follows (thanks to Guido Van Hoecke):
 
 Get iCalendar from https://pypi.python.org/pypi/icalendar, untar it
-and run 
+and run
 
 ````shell
 sudo python setup.py install
 ````
 
 Get pytz from https://pypi.python.org/pypi/pytz/. It comes as an egg
-file so you just run 
+file so you just run
 
 ````shell
 sudo easy-install pytz-2013b-py2.7.egg

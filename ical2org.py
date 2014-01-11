@@ -1,10 +1,15 @@
-#!/usr/bin/python2.7
+#!/usr/bin/env python
 
-import sys
-from math import floor
 from datetime import date, datetime, timedelta, tzinfo
+from math import floor
+from os import path
+import sys
+import urllib2
+import yaml
+
 from icalendar import Calendar
 from pytz import timezone, utc
+
 
 # Change here your local timezone
 LOCAL_TZ = timezone("Europe/Paris")
@@ -188,30 +193,56 @@ class EventRecurYearlyIter:
         if event_aux < self.start: return self.next()
         return (event_aux, event_aux.tzinfo.normalize(event_aux + self.duration), 1)
 
-if len(sys.argv) < 2:
-    fh = sys.stdin
-else:
-    fh = open(sys.argv[1],'rb')
 
-cal = Calendar.from_ical(fh.read())
+def ical_to_org(ics, filename):
+    fh = open(ics,'rb')
+    cal = Calendar.from_ical(fh.read())
+    now = datetime.now(utc)
+    start = now - timedelta( days = WINDOW)
+    end = now + timedelta( days = WINDOW)
+    with open(filename, 'w') as f:
+        for comp in cal.walk():
+            try:
+                event_iter = generate_event_iterator(comp, start, end)
+                for comp_start, comp_end, rec_event in event_iter:
+                    if 'SUMMARY' in comp:
+                        f.write("* {}\n".format(comp['SUMMARY'].to_ical())),
+                    else:
+                        f.write("* (no title)\n"),
+                    if rec_event and len(RECUR_TAG):
+                        f.write(" {}\n".format(RECUR_TAG))
+                    else:
+                        f.write("\n")
+                    f.write("  {}--{}\n".format(orgDate(comp_start), orgDate(comp_end)))
+                    if 'DESCRIPTION' in comp:
+                        f.write("{}\n".format(comp['DESCRIPTION'].to_ical()))
+            except:
+                pass
 
-now = datetime.now(utc)
-start = now - timedelta( days = WINDOW)
-end = now + timedelta( days = WINDOW)
-for comp in cal.walk():
-    try:
-        event_iter = generate_event_iterator(comp, start, end)
-        for comp_start, comp_end, rec_event in event_iter:
-            if 'SUMMARY' in comp:
-                print("* {}".format(comp['SUMMARY'].to_ical())),
-            else:
-                print("* (no title)"),
-            if rec_event and len(RECUR_TAG):
-                print(" {}".format(RECUR_TAG))
-            else:
-                print("")
-            print("  {}--{}".format(orgDate(comp_start), orgDate(comp_end)))
-            if 'DESCRIPTION' in comp:
-                print("{}".format(comp['DESCRIPTION'].to_ical()))
-    except:
-        pass
+
+def download_ics(url, filename):
+    print 'Download Ical: %s' % url
+    response = urllib2.urlopen(url)
+    with open(filename, 'w') as f:
+        f.write(response.read())
+
+def get_configuration_filename():
+    return "%s/.config/%s" % (path.expanduser("~"),
+                              'gcal2org.yml')
+
+
+def load_configuration():
+    config = get_configuration_filename()
+    print config
+    if path.exists(config):
+        f = open(config)
+        return yaml.load(f)
+
+
+if __name__ == '__main__':
+    config = load_configuration()
+    for ics in config['ics']:
+        for key, value in ics.iteritems ():
+            download_ics(value, '/tmp/%s.ics' % key)
+            ical_to_org('/tmp/%s.ics' % key,
+                        '%s/Org/%s.org' % (path.expanduser("~"), key))
